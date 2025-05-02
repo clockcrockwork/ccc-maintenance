@@ -1,5 +1,9 @@
 name: Build and Deploy Hugo Site
 
+permissions:
+  contents: read
+  pages: write
+
 on:
   push:
     paths:
