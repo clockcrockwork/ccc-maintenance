@@ -1,5 +1,8 @@
 name: Archive Now if CCC is Up
 
+permissions:
+  contents: write
+
 on:
   schedule:
     - cron: '*/30 * * * *'
