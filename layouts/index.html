@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>{{ .Site.Title }}</title>
+  <meta name="description" content="{{ .Site.Params.description }}">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <img src="/images/logo.svg" alt="サービスロゴ" width="120">
+    <h1>{{ .Site.Title }}</h1>
+  </header>
+
+  <main>
+    <section>
+      {{ if .Content | plain | len | eq 0 }}
+        {{ with .Site.GetPage "none.md" }}
+          {{ .Content }}
+        {{ end }}
+      {{ else }}
+        {{ .Content }}
+      {{ end }}
+    </section>
+
+    <section>
+      <h2>過去のメンテナンス履歴</h2>
+      <details>
+        <summary>表示する</summary>
+        <ul>
+          {{ range where .Site.RegularPages "Section" "history" }}
+            <li>
+              <strong>{{ .Date.Format "2006-01-02 15:04" }}</strong><br>
+              {{ .Plain | truncate 120 }}
+            </li>
+          {{ end }}
+        </ul>
+      </details>
+    </section>
+
+    {{ if .Site.Params.showUptime }}
+    <section>
+      <h2>現在の稼働状況</h2>
+      <p id="uptime">稼働率取得中...</p>
+      <script>
+        fetch("https://clockcrockwork.github.io/clockcrockwork-uptimes/api/uptime.json")
+          .then(res => res.json())
+          .then(data => {
+            document.getElementById("uptime").textContent = `稼働率：${data.message}`;
+          })
+          .catch(() => {
+            document.getElementById("uptime").textContent = "稼働率取得失敗";
+          });
+      </script>
+    </section>
+    {{ end }}
+
+    <section>
+      <h2>連絡先・再試行</h2>
+      <p>お問い合わせは <a href="{{ .Site.Params.contactDiscord }}">Discord</a> まで</p>
+      <button onclick="location.reload()">再読み込み</button>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; {{ now.Year }} @{{ .Site.Params.author }}</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,25 @@
+baseURL = "https://clockcrockwork.github.io/ccc-maintenance/"
+languageCode = "ja"
+title = "メンテナンス中"
+theme = ""
+defaultContentLanguage = "ja"
+relativeURLs = true
+canonifyURLs = true
+
+[params]
+  description = "メンテナンス中につきclockcrock.click（Misskey）のサーバーがダウンしています。"
+  showUptime = true
+  contactDiscord = "https://discord.gg/YOURSERVER"
+  author = "clockcrockwork"
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+
+[outputs]
+  home = ["HTML"]
+
+# enable SCSS pipeline (if needed)
+[assetDirs]
+  scss = "assets/scss"
