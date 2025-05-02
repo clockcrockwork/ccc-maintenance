@@ -1,0 +1,44 @@
+name: Archive Now if CCC is Up
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check now.md content
+        id: check_now
+        run: |
+          if [ -s content/now.md ]; then
+            echo "has_now=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_now=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check CCC status
+        id: clockcrockclick
+        if: steps.check_now.outputs.has_now == 'true'
+        run: |
+          curl -sf https://clockcrock.click/api/meta && echo "up=true" >> $GITHUB_OUTPUT || echo "up=false" >> $GITHUB_OUTPUT
+
+      - name: Archive now.md
+        if: steps.clockcrockclick.outputs.up == 'true'
+        run: |
+          DATE=$(date +%Y-%m-%dT%H-%M)
+          mkdir -p content/history
+          echo "---\ndate: $(date -Iseconds)\ntitle: ''\n---" > content/history/$DATE.md
+          cat content/now.md >> content/history/$DATE.md
+          echo "" > content/now.md
+
+      - name: Commit archive
+        if: steps.clockcrockclick.outputs.up == 'true'
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git add content/now.md content/history/
+          git commit -m "archive now.md as $DATE.md"
+          git push

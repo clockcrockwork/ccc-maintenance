@@ -1,0 +1,62 @@
+name: Build and Deploy Hugo Site
+
+on:
+  push:
+    paths:
+      - 'content/**'
+      - 'layouts/**'
+      - 'static/**'
+      - 'assets/**'
+      - 'config.*'
+      - '.github/workflows/deploy.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HUGO_CACHEDIR: /tmp/hugo_cache
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true  # Fetch Hugo themes (true OR recursive)
+          fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: 'latest'
+
+      - name: Install Dart Sass
+        run: npm install -g sass
+
+      - name: Compile SCSS
+        run: sass assets/scss/style.scss:static/style.css
+
+      - name: Build Hugo site
+        run: hugo --minify
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+
+      - name: Notify Discord
+        if: success() && github.event_name == 'push'
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+            -d @- ${{ secrets.DISCORD_WEBHOOK_URL }} <<EOF
+          {
+            "username": "Maintenance Bot",
+            "avatar_url": "https://example.com/logo.png",
+            "embeds": [{
+              "title": "メンテナンスページが更新されました",
+              "description": "now.md が更新されました。デプロイ完了。",
+              "url": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/",
+              "color": 5814783,
+              "timestamp": "${{ github.event.head_commit.timestamp }}"
+            }]
+          }
+          EOF
