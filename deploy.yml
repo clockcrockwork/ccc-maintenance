@@ -1,0 +1,93 @@
+name: Build and Deploy Hugo Site
+
+permissions:
+  contents: read
+  pages: write
+
+on:
+  push:
+    paths:
+      - 'content/**'
+      - 'layouts/**'
+      - 'static/**'
+      - 'assets/**'
+      - 'config.*'
+      - '.github/workflows/deploy.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HUGO_CACHEDIR: /tmp/hugo_cache
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: 'latest'
+
+      - name: Install Dart Sass
+        run: npm install -g sass
+
+      - name: Compile SCSS
+        run: sass assets/scss/style.scss:static/style.css
+
+      - name: Build Hugo site
+        run: hugo --minify
+
+      - name: Generate App JWT
+        id: jwt
+        run: |
+          echo "${{ secrets.GH_APP_PRIVATE_KEY }}" > app.pem
+          jwt=$(jwt=$(node -e '
+            const fs = require("fs");
+            const jwt = require("jsonwebtoken");
+            const now = Math.floor(Date.now() / 1000);
+            const payload = {
+              iat: now,
+              exp: now + 600,
+              iss: process.env.GH_APP_ID
+            };
+            const key = fs.readFileSync("app.pem", "utf8");
+            const token = jwt.sign(payload, key, { algorithm: "RS256" });
+            console.log(token);
+          ') && echo "::add-mask::$jwt" && echo "JWT=$jwt" >> $GITHUB_ENV)
+
+      - name: Get installation token
+        id: get_token
+        run: |
+          token=$(curl -s -X POST \
+            -H "Authorization: Bearer $JWT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/app/installations/${{ secrets.GH_INSTALLATION_ID }}/access_tokens \
+            | jq -r '.token')
+          echo "::add-mask::$token"
+          echo "INSTALL_TOKEN=$token" >> $GITHUB_ENV
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token: ${{ env.INSTALL_TOKEN }}
+          publish_dir: ./public
+
+      - name: Notify Discord
+        if: success() && github.event_name == 'push'
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+            -d @- ${{ secrets.DISCORD_WEBHOOK_URL }} <<EOF
+          {
+            "embeds": [{
+              "title": "メンテナンス情報が更新されました",
+              "description": "now.md が更新されました。デプロイ完了。",
+              "url": "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/",
+              "color": 5814783,
+              "timestamp": "${{ github.event.head_commit.timestamp }}"
+            }]
+          }
+          EOF

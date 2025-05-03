@@ -1,0 +1,87 @@
+name: Archive Now if CCC is Up
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check now.md content
+        id: check_now
+        run: |
+          if [ -s content/now.md ]; then
+            echo "has_now=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_now=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check CCC status
+        id: clockcrockclick
+        if: steps.check_now.outputs.has_now == 'true'
+        run: |
+          result=$(curl -sf -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"detail":false}' \
+            https://clockcrock.click/api/meta)
+
+          if [ $? -eq 0 ]; then
+            echo "up=true" >> $GITHUB_OUTPUT
+          else
+            echo "up=false" >> $GITHUB_OUTPUT
+          fi
+
+
+      - name: Archive now.md
+        if: steps.clockcrockclick.outputs.up == 'true'
+        run: |
+          DATE=$(date +%Y-%m-%dT%H-%M)
+          mkdir -p content/history
+          echo "---\ndate: $(date -Iseconds)\ntitle: ''\n---" > content/history/$DATE.md
+          cat content/now.md >> content/history/$DATE.md
+          echo "" > content/now.md
+          echo "date=$DATE" >> $GITHUB_ENV
+
+      - name: Generate App JWT
+        id: jwt
+        run: |
+          echo "${{ secrets.GH_APP_PRIVATE_KEY }}" > app.pem
+          jwt=$(jwt=$(ruby -ropenssl -rbase64 -e '
+            require "json"
+            payload = {
+              iat: Time.now.to_i,
+              exp: Time.now.to_i + (10 * 60),
+              iss: $ENV["GH_APP_ID"]
+            }
+            key = OpenSSL::PKey::RSA.new(File.read("app.pem"))
+            token = JWT.encode(payload, key, "RS256")
+            puts token
+          ') && echo "::add-mask::$jwt" && echo "JWT=$jwt" >> $GITHUB_ENV)
+
+      - name: Get installation token
+        id: get_token
+        run: |
+          token=$(curl -s -X POST \
+            -H "Authorization: Bearer $JWT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/app/installations/${{ secrets.GH_INSTALLATION_ID }}/access_tokens \
+            | jq -r '.token')
+          echo "::add-mask::$token"
+          echo "INSTALL_TOKEN=$token" >> $GITHUB_ENV
+
+      - name: Commit archive as GitHub App
+        if: steps.clockcrockclick.outputs.up == 'true'
+        run: |
+          git config user.name "clockcrockwork-bot[app]"
+          git config user.email "bot@clockcrockwork.local"
+          git remote set-url origin https://x-access-token:$INSTALL_TOKEN@github.com/${{ github.repository }}
+          git add content/now.md content/history/
+          git commit -m "archive now.md as $date.md"
+          git push
