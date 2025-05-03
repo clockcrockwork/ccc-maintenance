@@ -36,7 +36,7 @@ jobs:
         run: npm install -g sass
 
       - name: Compile SCSS
-        run: sass assets/scss/style.scss:static/style.css
+        run: sass assets/style.scss:static/style.css
 
       - name: Build Hugo site
         run: hugo --minify
