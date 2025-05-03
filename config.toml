@@ -8,7 +8,7 @@ canonifyURLs = true
 [params]
   description = "メンテナンス中につきclockcrock.click（Misskey）のサーバーがダウンしています。"
   showUptime = true
-  contactDiscord = "https://discord.gg/YOURSERVER"
+  contactDiscord = "https://discord.gg/ePb5VS83Ga"
   author = "clockcrockwork"
 
 [markup]
