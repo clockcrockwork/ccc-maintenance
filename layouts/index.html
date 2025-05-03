@@ -9,6 +9,7 @@
   <title>{{ .Site.Title }}</title>
   <meta name="description" content="{{ .Site.Params.description }}">
   <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
 </head>
 <body>
   <header>
@@ -18,8 +19,8 @@
 
   <main>
     <section>
-      {{ if .Content | plain | len | eq 0 }}
-        {{ with .Site.GetPage "none.md" }}
+      {{ if .Content | plainify | len | eq 0 }}
+        {{ with site.GetPage "/none" }}
           {{ .Content }}
         {{ end }}
       {{ else }}
@@ -35,7 +36,7 @@
           {{ range where .Site.RegularPages "Section" "history" }}
             <li>
               <strong>{{ .Date.Format "2006-01-02 15:04" }}</strong><br>
-              {{ .Plain | truncate 120 }}
+              {{ .Content | plainify | truncate 120 }}
             </li>
           {{ end }}
         </ul>
