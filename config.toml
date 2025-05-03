@@ -1,12 +1,12 @@
 baseURL = "https://clockcrockwork.github.io/ccc-maintenance/"
 languageCode = "ja"
-title = "メンテナンス中"
+title = "メンテナンスアナウンス"
 defaultContentLanguage = "ja"
 relativeURLs = true
 canonifyURLs = true
 
 [params]
-  description = "メンテナンス中につきclockcrock.click（Misskey）のサーバーがダウンしています。"
+  description = "メンテナンス中につきclockcrock.click（Misskey）のサーバーがダウンしている場合表示されます。"
   showUptime = true
   contactDiscord = "https://discord.gg/ePb5VS83Ga"
   author = "clockcrockwork"
