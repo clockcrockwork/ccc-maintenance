@@ -1,11 +1,20 @@
 name: Build and Deploy Hugo Site
 
 permissions:
-  contents: write
-  pages: write
+  contents: read
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - 'content/**'
+      - 'layouts/**'
+      - 'static/**'
+      - 'assets/**'
+      - 'config.*'
+      - '.github/workflows/deploy.yml'
+  pull_request:
     paths:
       - 'content/**'
       - 'layouts/**'
@@ -15,14 +24,46 @@ on:
       - '.github/workflows/deploy.yml'
 
 jobs:
-  deploy:
+  build:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     env:
       HUGO_CACHEDIR: /tmp/hugo_cache
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
+        with:
+          submodules: true  # Fetch Hugo themes (true OR recursive)
+          fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
+          persist-credentials: false
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: 'latest'
+
+      - name: Install Dart Sass
+        run: npm install -g sass
+
+      - name: Compile SCSS
+        run: sass assets/style.scss:static/style.css
+
+      - name: Build Hugo site
+        run: hugo --minify
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+      pages: write
+    runs-on: ubuntu-latest
+    env:
+      HUGO_CACHEDIR: /tmp/hugo_cache
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
         with:
           submodules: true  # Fetch Hugo themes (true OR recursive)
           fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
